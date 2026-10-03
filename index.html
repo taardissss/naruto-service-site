@@ -2097,7 +2097,9 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
         body.innerHTML = '<div class="adm-empty">详情渲染失败：'+esc((err && err.message) || err)+'</div>';
       }
     }).catch(function(err){
-      body.innerHTML = '<div class="adm-empty">加载失败：'+esc((err && err.message) || err)+'</div>';
+      var m = (err && err.message) || err;
+      body.innerHTML = '<div class="adm-empty">加载失败：'+esc(m)
+        + '<br><span style="display:inline-block;margin-top:8px;font-size:12px;line-height:1.8">可能原因：浏览器缓存了旧页面，或插件拦截了本站请求。<br>请按 Ctrl+F5 强制刷新；仍不行请用无痕窗口打开本站。</span></div>';
     });
   }
 
@@ -2220,6 +2222,26 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
     });
   });
 
+})();
+</script>
+<script>
+(function(){
+  var BUILD = "2026.10.03.2";
+  function check(){
+    try{
+      fetch("version.json?t="+Date.now(), {cache:"no-store"}).then(function(r){
+        return r.ok ? r.text() : "";
+      }).then(function(v){
+        v = String(v||"").trim();
+        if(v && v !== BUILD && !sessionStorage.getItem("ns_ver_reloaded")){
+          sessionStorage.setItem("ns_ver_reloaded","1");
+          location.replace(location.pathname + "?v=" + encodeURIComponent(v));
+        }
+      }).catch(function(){});
+    }catch(e){}
+  }
+  if(document.readyState === "complete") check();
+  else window.addEventListener("load", check);
 })();
 </script>
 </body>
