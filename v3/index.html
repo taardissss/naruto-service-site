@@ -898,11 +898,15 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     <div class="track-wrap">
       <div class="track-panel reveal">
         <h3>订单号查询</h3>
-        <p class="hint">订单号形如 NF20261003001，下单成功后自动生成。</p>
+        <p class="hint">订单号形如 NF20261003001，下单成功后自动生成。为保护隐私，需同时填写下单时留下的联系方式。</p>
         <div class="field">
           <label for="trackInput">订单号 <i>*</i></label>
           <input class="input" id="trackInput" placeholder="请输入订单号" autocomplete="off">
-          <div class="err" id="trackErr">未查询到该订单，请核对后重试</div>
+        </div>
+        <div class="field">
+          <label for="trackContact">联系方式 <i>*</i></label>
+          <input class="input" id="trackContact" placeholder="下单时填写的 QQ / 微信 / 手机号" autocomplete="off">
+          <div class="err" id="trackErr">未查询到该订单，请核对订单号与联系方式</div>
         </div>
         <button class="btn btn-primary btn-block" id="trackBtn">查询进度</button>
         <p style="margin-top:16px;font-size:12.5px;color:var(--text-faint)">
@@ -987,7 +991,7 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     </div>
     <div class="foot-bottom">
       <span>© 2026 忍界代行 · 火影忍者手游代肝服务</span>
-      <span class="demo-note">当前风格：查克拉爆裂 · 炫酷火影特效 ｜ 本站为演示页面，下单与查询数据均保存在本地浏览器，不涉及真实交易</span>
+      <span class="demo-note">当前风格：查克拉爆裂 · 炫酷火影特效 ｜ 本站为演示页面，订单数据存于云端数据库，请勿提交真实账号信息</span>
     </div>
   </div>
 </footer>
@@ -1081,23 +1085,30 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     <div class="modal-head">
       <div>
         <h3 id="loginTitle">登录账号</h3>
-        <p>登录后可查看订单记录与进度</p>
+        <p id="loginSub">登录后可查看订单记录与进度</p>
       </div>
       <button class="modal-close" data-close aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="modal-body" id="loginBody">
       <form id="loginForm" novalidate>
         <div class="field">
-          <label for="fAccount">手机号 / 账号 <i>*</i></label>
-          <input class="input" id="fAccount" placeholder="请输入手机号或账号" autocomplete="off">
+          <label for="fAccount">邮箱 <i>*</i></label>
+          <input class="input" id="fAccount" type="email" placeholder="用于登录，例如 ninja@example.com" autocomplete="email">
+        </div>
+        <div class="field" id="nickField" style="display:none">
+          <label for="fNick">昵称</label>
+          <input class="input" id="fNick" placeholder="选填，用于订单页显示" autocomplete="nickname">
         </div>
         <div class="field">
           <label for="fPwd">密码 <i>*</i></label>
-          <input class="input" id="fPwd" type="password" placeholder="请输入密码">
+          <input class="input" id="fPwd" type="password" placeholder="至少 6 位" autocomplete="current-password">
         </div>
-        <div class="err" id="loginErr">账号或密码不能为空</div>
-        <button type="submit" class="btn btn-primary btn-block">登录</button>
+        <div class="err" id="loginErr">邮箱或密码不正确</div>
+        <button type="submit" class="btn btn-primary btn-block" id="loginSubmit">登录</button>
       </form>
+      <p style="margin-top:16px;font-size:12.5px;color:var(--text-faint);text-align:center">
+        <span id="authSwitchTip">还没有账号？</span><button type="button" class="sample-link" id="authSwitchBtn">立即注册</button>
+      </p>
     </div>
   </div>
 </div>
@@ -1109,7 +1120,7 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     <div class="modal-head">
       <div>
         <h3>我的订单</h3>
-        <p>本浏览器提交的订单记录，点击可查看进度</p>
+        <p>登录账号下的订单记录，点击可查看进度</p>
       </div>
       <button class="modal-close" data-close aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
@@ -1168,27 +1179,33 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 (function(){
   "use strict";
 
+  /* ---------- Supabase 配置 ----------
+     anon key 是公开密钥，设计上就允许放在前端；真正的写权限由数据库
+     的行级权限与 SECURITY DEFINER 函数控制。切勿把 service_role key 放这里。 */
+  var SUPABASE_URL  = "https://sdxwtxuqzgrlzpkdmrwk.supabase.co";
+  var SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkeHd0eHVxemdybHpwa2RtcndrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMDM5MDYsImV4cCI6MjEwNjU3OTkwNn0.4pm_lwKjzt992GkymkG7BMTFC8FuamyijMkX-IJZASs";
+  var sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+      })
+    : null;
+
+  var CURRENT_USER = null;   // 当前登录用户
+  var ORDERS_CACHE = {};     // 订单号 -> 联系方式，用于「我的订单」点击后直接查进度
+
   /* ---------- 工具 ---------- */
   var $  = function(s,c){return (c||document).querySelector(s);};
   var $$ = function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s));};
-  var LS_ORDERS = "nf_orders";
-  var LS_USER   = "nf_user";
 
   function esc(str){
     return String(str==null?"":str).replace(/[&<>"']/g,function(c){
       return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
-  }
-  function readJSON(key,def){
-    try{ var v = localStorage.getItem(key); return v?JSON.parse(v):def; }
-    catch(e){ return def; }
-  }
-  function writeJSON(key,val){
-    try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){}
   }
   function toast(msg,type){
     var el = $("#toast");
@@ -1348,6 +1365,27 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     renderPlans(btn.getAttribute("data-plan"));
   });
 
+  /* ---------- 服务标识 / 字段解析 ---------- */
+  var SERVICE_KEYS = {
+    "团本带队":"raid", "日常托管":"daily", "每日任务":"daily",
+    "周任务托管":"weekly", "秘境速刷":"secret",
+    "战力提升":"power", "竞技场代打":"arena", "竞技场 · 组织战":"arena"
+  };
+  function serviceKey(name){
+    return SERVICE_KEYS[String(name||"").trim()] || "other";
+  }
+  function planAmount(plan){
+    var m = String(plan||"").match(/¥\s*(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : null;
+  }
+  function contactType(v){
+    var s = String(v||"").trim();
+    if(/^1\d{10}$/.test(s))   return "phone";
+    if(/^\d{5,12}$/.test(s))  return "qq";
+    if(s.indexOf("@") > -1)   return "email";
+    return "wechat";
+  }
+
   /* ---------- 下单表单 ---------- */
   var PLAN_OPTIONS = {
     "团本带队":["单团体验 ¥30/次","双团连打 ¥55/2次","周常团本 ¥120/周"],
@@ -1393,72 +1431,63 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     openOrder(btn.getAttribute("data-service"), btn.getAttribute("data-plan"));
   });
 
-  function genOrderId(){
-    var d = new Date();
-    var y = d.getFullYear();
-    var m = String(d.getMonth()+1).padStart(2,"0");
-    var day = String(d.getDate()).padStart(2,"0");
-    var rnd = String(Math.floor(Math.random()*900)+100);
-    return "NF"+y+m+day+rnd;
-  }
-
-  var STEPS = [
-    {t:"已接单",   d:"客服已确认订单，等待分配代练"},
-    {t:"已登录账号",d:"代练已登录您的账号，开始准备"},
-    {t:"执行中",   d:"正在按约定内容完成任务"},
-    {t:"质检核对", d:"核对任务完成情况与资源变动"},
-    {t:"完成交付", d:"任务已完成，请及时修改密码"}
-  ];
-
-  function progressOf(order){
-    if(order.status === "done") return 100;
-    var mins = (Date.now() - order.createdAt)/60000;
-    var base = order.baseProgress || 0;
-    return Math.max(base, Math.min(95, Math.round(base + mins*0.6)));
-  }
-  function statusOf(p){
-    if(p >= 100) return {key:"done", label:"已完成"};
-    if(p >= 40)  return {key:"progress", label:"进行中"};
-    return {key:"pending", label:"已接单"};
-  }
-
   function onOrderSubmit(e){
     e.preventDefault();
-    var svc = $("#fService").value;
-    var plan = $("#fPlan").value;
-    var server = $("#fServer").value.trim();
-    var role = $("#fRole").value.trim();
+    var planSel = $("#fPlan");
+    var svc     = $("#fService").value;
+    var plan    = planSel.value;
+    var server  = $("#fServer").value.trim();
+    var role    = $("#fRole").value.trim();
     var contact = $("#fContact").value.trim();
-    var time = $("#fTime").value;
-    var note = $("#fNote").value.trim();
-    var agree = $("#fAgree").checked;
+    var time    = $("#fTime").value;
+    var note    = $("#fNote").value.trim();
+    var agree   = $("#fAgree").checked;
+    var err     = $("#orderErr");
 
     if(!server || !role || !contact || !agree){
-      $("#orderErr").classList.add("on");
+      err.textContent = "请完整填写带 * 的必填项，并勾选同意服务说明";
+      err.classList.add("on");
       return;
     }
-    $("#orderErr").classList.remove("on");
+    if(!sb){
+      err.textContent = "服务暂时不可用，请稍后重试";
+      err.classList.add("on");
+      return;
+    }
+    err.classList.remove("on");
 
-    var order = {
-      id: genOrderId(),
-      service: svc,
-      plan: plan,
-      server: server,
-      role: role,
-      contact: contact,
-      expect: time,
-      note: note,
-      createdAt: Date.now(),
-      status: "pending",
-      baseProgress: 8,
-      owner: (readJSON(LS_USER,null)||{}).account || ""
-    };
-    var list = readJSON(LS_ORDERS,[]);
-    list.unshift(order);
-    writeJSON(LS_ORDERS, list.slice(0,30));
+    var btn = $("#orderForm button[type=submit]");
+    btn.disabled = true; btn.textContent = "提交中…";
 
-    renderOrderDone(order);
-    toast("订单提交成功","ok");
+    var fullNote = [];
+    if(time) fullNote.push("期望时效：" + time);
+    if(note) fullNote.push(note);
+
+    var key = serviceKey(svc);
+    sb.rpc("create_order", {
+      p_service_key:  key,
+      p_service_name: svc,
+      p_plan_key:     key + "-" + planSel.selectedIndex,
+      p_plan_name:    plan,
+      p_server:       server,
+      p_game_role:    role,
+      p_contact:      contact,
+      p_contact_type: contactType(contact),
+      p_amount:       planAmount(plan),
+      p_note:         fullNote.join("；") || null
+    }).then(function(res){
+      btn.disabled = false; btn.textContent = "提交订单";
+      if(res.error){
+        err.textContent = "下单失败：" + res.error.message;
+        err.classList.add("on");
+        return;
+      }
+      var row = (res.data && res.data[0]) || {};
+      ORDERS_CACHE[row.order_no] = contact;
+      renderOrderDone({ id: row.order_no, contact: contact });
+      toast("订单提交成功","ok");
+      refreshOrders();
+    });
   }
   bindOrderForm();
 
@@ -1467,7 +1496,7 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
       '<div class="done-panel">'
       + '<div class="done-ico"><svg viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></svg></div>'
       + '<h3>订单提交成功</h3>'
-      + '<p>客服将在 30 分钟内与您联系确认，请保持联系方式畅通。</p>'
+      + '<p>客服将在 30 分钟内与您联系确认，请保持联系方式畅通。<br>请记好订单号，查询进度需同时提供订单号与联系方式。</p>'
       + '<div class="oid-box"><span>您的订单号</span><b>'+esc(order.id)+'</b></div>'
       + '<div class="done-actions">'
       + '<button class="btn btn-ghost" id="doneTrack">查询进度</button>'
@@ -1478,17 +1507,24 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     $("#doneTrack").addEventListener("click",function(){
       closeModal($("#orderModal"));
       $("#trackInput").value = order.id;
-      doTrack(order.id);
+      if(order.contact) $("#trackContact").value = order.contact;
+      doTrack(order.id, order.contact);
       document.getElementById("track").scrollIntoView({behavior:"smooth"});
     });
   }
 
-  /* ---------- 登录 ---------- */
+  /* ---------- 登录 / 注册（Supabase Auth） ---------- */
+  var authMode = "login";
+
   function setUser(user){
+    CURRENT_USER = user || null;
     var chip = $("#userChip");
     if(user){
-      $("#userName").textContent = user.account;
-      $("#userAvatar").textContent = user.account.slice(0,1).toUpperCase();
+      var email = user.email || "已登录";
+      var nick  = (user.user_metadata && user.user_metadata.nickname) || "";
+      var show  = nick || email;
+      $("#userName").textContent = show;
+      $("#userAvatar").textContent = show.slice(0,1).toUpperCase();
       chip.classList.add("on");
       $("#loginBtn").style.display = "none";
     }else{
@@ -1496,46 +1532,149 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
       $("#loginBtn").style.display = "";
     }
   }
-  setUser(readJSON(LS_USER,null));
 
-  $("#loginBtn").addEventListener("click",function(){ openModal("loginModal"); });
+  function setAuthMode(mode){
+    authMode = mode;
+    var isLogin = mode === "login";
+    $("#loginTitle").textContent    = isLogin ? "登录账号" : "注册账号";
+    $("#loginSub").textContent      = isLogin ? "登录后可查看订单记录与进度" : "注册后订单自动关联到你的账号";
+    $("#loginSubmit").textContent   = isLogin ? "登录" : "注册并登录";
+    $("#nickField").style.display   = isLogin ? "none" : "";
+    $("#fPwd").setAttribute("autocomplete", isLogin ? "current-password" : "new-password");
+    $("#authSwitchTip").textContent = isLogin ? "还没有账号？" : "已经有账号了？";
+    $("#authSwitchBtn").textContent = isLogin ? "立即注册" : "去登录";
+    $("#loginErr").classList.remove("on");
+  }
+
+  if(sb){
+    sb.auth.getSession().then(function(res){
+      setUser(res.data && res.data.session ? res.data.session.user : null);
+    });
+    sb.auth.onAuthStateChange(function(_evt, session){
+      setUser(session ? session.user : null);
+    });
+  }
+
+  $("#loginBtn").addEventListener("click",function(){ setAuthMode("login"); openModal("loginModal"); });
   $("#drawerLogin").addEventListener("click",function(){
     burger.classList.remove("on"); drawer.classList.remove("on");
-    var u = readJSON(LS_USER,null);
-    if(u) openOrders(); else openModal("loginModal");
+    if(CURRENT_USER) openOrders();
+    else { setAuthMode("login"); openModal("loginModal"); }
+  });
+  $("#authSwitchBtn").addEventListener("click",function(){
+    setAuthMode(authMode === "login" ? "signup" : "login");
   });
 
   $("#loginForm").addEventListener("submit",function(e){
     e.preventDefault();
+    var err = $("#loginErr");
     var acc = $("#fAccount").value.trim();
-    var pwd = $("#fPwd").value.trim();
-    if(!acc || !pwd){ $("#loginErr").classList.add("on"); return; }
-    $("#loginErr").classList.remove("on");
-    var user = {account:acc, at:Date.now()};
-    writeJSON(LS_USER,user);
-    setUser(user);
-    closeModal($("#loginModal"));
-    toast("登录成功，欢迎回来","ok");
-    $("#fAccount").value = ""; $("#fPwd").value = "";
+    var pwd = $("#fPwd").value;
+    var nick = $("#fNick") ? $("#fNick").value.trim() : "";
+
+    if(!acc || !pwd){ err.textContent = "邮箱和密码不能为空"; err.classList.add("on"); return; }
+    if(pwd.length < 6){ err.textContent = "密码至少 6 位"; err.classList.add("on"); return; }
+    if(!sb){ err.textContent = "服务暂时不可用，请稍后重试"; err.classList.add("on"); return; }
+
+    var btn = $("#loginSubmit");
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = "处理中…";
+
+    var isLogin = authMode === "login";
+    var p = isLogin
+      ? sb.auth.signInWithPassword({ email: acc, password: pwd })
+      : sb.auth.signUp({
+          email: acc, password: pwd,
+          options: { data: { nickname: nick || acc.split("@")[0] } }
+        });
+
+    p.then(function(res){
+      btn.disabled = false; btn.textContent = label;
+      if(res.error){
+        err.textContent = (isLogin ? "登录失败：" : "注册失败：") + res.error.message;
+        err.classList.add("on");
+        return;
+      }
+      err.classList.remove("on");
+      if(!isLogin && res.data && !res.data.session){
+        err.textContent = "注册成功，请到邮箱点击确认链接后再登录";
+        err.classList.add("on");
+        setAuthMode("login");
+        return;
+      }
+      if(res.data && res.data.user) setUser(res.data.user);
+      closeModal($("#loginModal"));
+      toast(isLogin ? "登录成功，欢迎回来" : "注册成功，已自动登录","ok");
+      $("#fAccount").value = ""; $("#fPwd").value = "";
+      refreshOrders();
+    });
   });
 
   /* ---------- 我的订单 ---------- */
-  function openOrders(){
-    var list = readJSON(LS_ORDERS,[]);
+  var ORDER_COLS = "order_no,service_name,plan_name,server,status,progress,contact,created_at";
+
+  function statusMeta(status, progress){
+    var p = typeof progress === "number" ? progress : 0;
+    var map = {
+      pending:  {key:"pending",  label:"待接单"},
+      accepted: {key:"progress", label:"已接单"},
+      logging:  {key:"progress", label:"登录中"},
+      running:  {key:"progress", label:"执行中"},
+      qc:       {key:"progress", label:"质检中"},
+      done:     {key:"done",     label:"已完成"},
+      canceled: {key:"pending",  label:"已取消"}
+    };
+    return map[status] || (p >= 100 ? map.done : (p >= 40 ? map.running : map.pending));
+  }
+
+  function renderOrders(list){
     var body = $("#ordersBody");
     if(!list.length){
-      body.innerHTML = '<div class="empty-tip">暂无订单记录<br>下单后订单会保存在本浏览器中</div>';
-    }else{
-      body.innerHTML = '<div class="ord-list">' + list.map(function(o){
-        var p = progressOf(o), st = statusOf(p);
-        return '<div class="ord-row" data-track="'+esc(o.id)+'">'
-          + '<div class="oi"><div class="oid2">'+esc(o.id)+'</div>'
-          + '<div class="os">'+esc(o.service)+' · '+esc(o.plan)+' · '+esc(o.server)+'</div></div>'
-          + '<span class="badge '+st.key+'">'+st.label+'</span>'
-          + '</div>';
-      }).join("") + '</div>';
+      body.innerHTML = '<div class="empty-tip">还没有订单<br>登录后下单，订单会自动关联到你的账号</div>';
+      return;
     }
+    body.innerHTML = '<div class="ord-list">' + list.map(function(o){
+      var st = statusMeta(o.status, o.progress);
+      return '<div class="ord-row" data-track="'+esc(o.order_no)+'">'
+        + '<div class="oi"><div class="oid2">'+esc(o.order_no)+'</div>'
+        + '<div class="os">'+esc(o.service_name)
+          + (o.plan_name ? ' · '+esc(o.plan_name) : '')
+          + (o.server ? ' · '+esc(o.server) : '')+'</div></div>'
+        + '<span class="badge '+st.key+'">'+st.label+'</span>'
+        + '</div>';
+    }).join("") + '</div>';
+  }
+
+  function refreshOrders(){
+    if(!sb || !CURRENT_USER) return;
+    sb.from("orders").select(ORDER_COLS)
+      .order("created_at",{ascending:false}).limit(30)
+      .then(function(res){
+        if(res.error || !res.data) return;
+        res.data.forEach(function(o){ ORDERS_CACHE[o.order_no] = o.contact; });
+        if($("#ordersModal").classList.contains("on")) renderOrders(res.data);
+      });
+  }
+
+  function openOrders(){
+    var body = $("#ordersBody");
+    if(!CURRENT_USER){
+      body.innerHTML = '<div class="empty-tip">请先登录，登录后可查看账号下的订单</div>';
+      openModal("ordersModal");
+      return;
+    }
+    body.innerHTML = '<div class="empty-tip">加载中…</div>';
     openModal("ordersModal");
+    sb.from("orders").select(ORDER_COLS)
+      .order("created_at",{ascending:false}).limit(30)
+      .then(function(res){
+        if(res.error){
+          body.innerHTML = '<div class="empty-tip">加载失败：'+esc(res.error.message)+'</div>';
+          return;
+        }
+        (res.data||[]).forEach(function(o){ ORDERS_CACHE[o.order_no] = o.contact; });
+        renderOrders(res.data||[]);
+      });
   }
   $("#userChip").addEventListener("click",openOrders);
   $("#ordersBody").addEventListener("click",function(e){
@@ -1544,76 +1683,96 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     closeModal($("#ordersModal"));
     var id = row.getAttribute("data-track");
     $("#trackInput").value = id;
-    doTrack(id);
+    if(ORDERS_CACHE[id]) $("#trackContact").value = ORDERS_CACHE[id];
+    doTrack(id, ORDERS_CACHE[id]);
     document.getElementById("track").scrollIntoView({behavior:"smooth"});
   });
 
-  /* ---------- 进度查询 ---------- */
-  var SAMPLE = {
-    id:"NF20261003001",
-    service:"团本带队",
-    plan:"双团连打 ¥55",
-    server:"微信区 12 区",
-    role:"漩涡鸣人",
-    contact:"ninja***",
-    expect:"24 小时内完成",
-    note:"",
-    createdAt: Date.now() - 92*60000,
-    status:"progress",
-    baseProgress: 20,
-    owner:""
-  };
+  /* ---------- 进度查询（Supabase track_order） ---------- */
+  var SAMPLE = { order_no:"NF20261003001", contact:"13800000000" };
 
-  function findOrder(id){
-    var key = String(id||"").trim().toUpperCase();
-    if(!key) return null;
-    if(key === SAMPLE.id) return SAMPLE;
-    var list = readJSON(LS_ORDERS,[]);
-    for(var i=0;i<list.length;i++){
-      if(String(list[i].id).toUpperCase() === key) return list[i];
-    }
-    return null;
+  function emptyTrack(html){
+    return '<div class="track-empty">'
+      + '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+      + '<p>'+esc(html)+'</p></div>';
   }
 
-  function doTrack(id){
-    var order = findOrder(id);
+  function fmtTime(v){
+    var d = new Date(v);
+    if(isNaN(d.getTime())) return "";
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")
+      + " "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function doTrack(orderNo, contact){
     var err = $("#trackErr");
     var box = $("#trackResult");
-    if(!order){
+    var no  = String(orderNo == null ? $("#trackInput").value : orderNo).trim().toUpperCase();
+    var ct  = String(contact == null ? $("#trackContact").value : contact).trim();
+
+    if(!no || !ct){
+      err.textContent = "请填写订单号和下单时使用的联系方式";
       err.classList.add("on");
-      box.innerHTML = '<div class="track-empty">'
-        + '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
-        + '<p>未找到订单，请检查订单号是否正确</p></div>';
       return;
     }
+    if(!sb){
+      err.textContent = "服务暂时不可用，请稍后重试";
+      err.classList.add("on");
+      return;
+    }
+
     err.classList.remove("on");
+    box.innerHTML = emptyTrack("查询中…");
 
-    var p = progressOf(order);
-    var st = statusOf(p);
-    var stepIdx = p>=100 ? 4 : Math.min(4, Math.floor(p/20));
-    var created = new Date(order.createdAt);
-    var timeStr = created.getFullYear()+"-"+String(created.getMonth()+1).padStart(2,"0")+"-"+String(created.getDate()).padStart(2,"0")
-      + " "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
+    sb.rpc("track_order", { p_order_no: no, p_contact: ct }).then(function(res){
+      if(res.error){
+        err.textContent = "查询失败：" + res.error.message;
+        err.classList.add("on");
+        box.innerHTML = emptyTrack("查询失败，请稍后重试");
+        return;
+      }
+      var rows = res.data || [];
+      if(!rows.length){
+        err.textContent = "未查询到该订单，请核对订单号与联系方式";
+        err.classList.add("on");
+        box.innerHTML = emptyTrack("未找到订单，请检查订单号与联系方式是否正确");
+        return;
+      }
+      err.classList.remove("on");
+      renderTrack(rows[0]);
+    });
+  }
 
-    var steps = STEPS.map(function(s,i){
-      var cls = i<stepIdx ? "on" : (i===stepIdx ? "now" : "");
-      var icon = i<stepIdx ? '<path d="m5 13 4 4 10-10"/>' : '<circle cx="12" cy="12" r="3"/>';
-      return '<div class="step '+cls+'"><span class="dot2"><svg viewBox="0 0 24 24">'+icon+'</svg></span>'
-        + '<div><div class="st">'+esc(s.t)+'</div><div class="sd">'+esc(s.d)+'</div></div></div>';
+  function renderTrack(o){
+    var box = $("#trackResult");
+    var st  = statusMeta(o.status, o.progress);
+    var p   = typeof o.progress === "number" ? o.progress : 0;
+    var timeline = o.timeline || [];
+
+    var steps = timeline.map(function(t,i){
+      var cls = (i === timeline.length-1) ? "now" : "on";
+      return '<div class="step '+cls+'"><span class="dot2"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10"/></svg></span>'
+        + '<div><div class="st">'+esc(t.title || t.stage)+'</div>'
+        + '<div class="sd">'+esc(t.detail||"")+(t.at ? ' · '+esc(fmtTime(t.at)) : '')+'</div></div></div>';
     }).join("");
+
+    if(!steps){
+      steps = '<div class="step now"><span class="dot2"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg></span>'
+        + '<div><div class="st">已接单</div><div class="sd">订单已提交，等待客服确认接单</div></div></div>';
+    }
 
     box.innerHTML =
       '<div class="order-top">'
-      + '<div class="oid">'+esc(order.id)+'</div>'
+      + '<div class="oid">'+esc(o.order_no)+'</div>'
       + '<span class="badge '+st.key+'">'+st.label+'</span>'
       + '</div>'
       + '<div class="kv">'
-      + '<div><span>服务项目</span><b>'+esc(order.service)+'</b></div>'
-      + '<div><span>套餐档位</span><b>'+esc(order.plan)+'</b></div>'
-      + '<div><span>区服</span><b>'+esc(order.server)+'</b></div>'
-      + '<div><span>角色名 / ID</span><b>'+esc(order.role)+'</b></div>'
-      + '<div><span>期望时效</span><b>'+esc(order.expect||"不限时间")+'</b></div>'
-      + '<div><span>下单时间</span><b>'+timeStr+'</b></div>'
+      + '<div><span>服务项目</span><b>'+esc(o.service_name||"—")+'</b></div>'
+      + '<div><span>套餐档位</span><b>'+esc(o.plan_name||"—")+'</b></div>'
+      + '<div><span>区服</span><b>'+esc(o.server||"—")+'</b></div>'
+      + '<div><span>角色名 / ID</span><b>'+esc(o.game_role||"—")+'</b></div>'
+      + '<div><span>订单金额</span><b>'+(o.amount!=null ? "¥"+Number(o.amount).toFixed(2) : "待客服确认")+'</b></div>'
+      + '<div><span>下单时间</span><b>'+esc(fmtTime(o.created_at))+'</b></div>'
       + '</div>'
       + '<div class="bar-head"><span>当前进度</span><b>'+p+'%</b></div>'
       + '<div class="bar"><i id="barFill"></i></div>'
@@ -1625,14 +1784,19 @@ body[data-v="v3"] .shuriken-deco path{fill:var(--teal)}
     });
   }
 
-  $("#trackBtn").addEventListener("click",function(){ doTrack($("#trackInput").value); });
+  $("#trackBtn").addEventListener("click",function(){ doTrack(); });
   $("#trackInput").addEventListener("keydown",function(e){
-    if(e.key==="Enter"){ e.preventDefault(); doTrack(this.value); }
+    if(e.key==="Enter"){ e.preventDefault(); doTrack(); }
+  });
+  $("#trackContact").addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ e.preventDefault(); doTrack(); }
   });
   $("#trackInput").addEventListener("input",function(){ $("#trackErr").classList.remove("on"); });
+  $("#trackContact").addEventListener("input",function(){ $("#trackErr").classList.remove("on"); });
   $("#sampleBtn").addEventListener("click",function(){
-    $("#trackInput").value = SAMPLE.id;
-    doTrack(SAMPLE.id);
+    $("#trackInput").value = SAMPLE.order_no;
+    $("#trackContact").value = SAMPLE.contact;
+    doTrack(SAMPLE.order_no, SAMPLE.contact);
   });
 
   /* ---------- 服务说明弹窗 ---------- */
