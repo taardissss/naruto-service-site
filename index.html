@@ -650,6 +650,7 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
         <span id="userName">未登录</span>
       </div>
       <button class="btn btn-ghost btn-sm" id="loginBtn">登录</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none">退出登录</button>
       <button class="btn btn-primary btn-sm" data-order>立即下单</button>
       <button class="burger" id="burger" aria-label="菜单"><i></i><i></i><i></i></button>
     </div>
@@ -664,6 +665,7 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
   <a href="#guide">服务说明</a>
   <div class="drawer-cta">
     <button class="btn btn-ghost btn-sm" id="drawerLogin">登录 / 我的订单</button>
+    <button class="btn btn-ghost btn-sm" id="drawerLogout" style="display:none">退出登录</button>
     <button class="btn btn-primary btn-sm" data-order>立即下单</button>
     <button class="btn btn-gold btn-sm admin-entry" id="drawerAdmin">管理后台</button>
   </div>
@@ -1157,6 +1159,7 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
     <span class="at-me" id="adminMe"></span>
     <button class="btn btn-ghost btn-sm" id="adminRefresh">刷新</button>
     <button class="btn btn-primary btn-sm" id="adminExit">返回前台</button>
+    <button class="btn btn-ghost btn-sm" id="adminLogout">退出登录</button>
   </div>
   <div class="admin-body">
     <div class="admin-wrap">
@@ -1552,9 +1555,15 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
       $("#userAvatar").textContent = show.slice(0,1).toUpperCase();
       chip.classList.add("on");
       $("#loginBtn").style.display = "none";
+      ["logoutBtn","drawerLogout"].forEach(function(id){
+        var b = $("#"+id); if(b) b.style.display = "";
+      });
     }else{
       chip.classList.remove("on");
       $("#loginBtn").style.display = "";
+      ["logoutBtn","drawerLogout"].forEach(function(id){
+        var b = $("#"+id); if(b) b.style.display = "none";
+      });
       closeAdmin();
     }
     applyAdminEntry(false);
@@ -1573,6 +1582,16 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
     if(!sb || !CURRENT_USER){ applyAdminEntry(false); return; }
     sb.rpc("is_admin").then(function(res){
       applyAdminEntry(!res.error && res.data === true);
+    });
+  }
+
+  function doLogout(){
+    if(!sb) return;
+    sb.auth.signOut().then(function(){
+      setUser(null);
+      burger.classList.remove("on");
+      drawer.classList.remove("on");
+      toast("已退出登录","ok");
     });
   }
 
@@ -1650,6 +1669,10 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
   }
 
   $("#loginBtn").addEventListener("click",function(){ setAuthMode("login"); openModal("loginModal"); });
+  ["logoutBtn","drawerLogout","adminLogout"].forEach(function(id){
+    var b = $("#"+id);
+    if(b) b.addEventListener("click",doLogout);
+  });
   $("#drawerLogin").addEventListener("click",function(){
     burger.classList.remove("on"); drawer.classList.remove("on");
     if(CURRENT_USER) openOrders();
