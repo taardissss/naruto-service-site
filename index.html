@@ -2056,17 +2056,25 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
   function closeAdDrawer(){ var d=$("#admDrawer"); if(d) d.classList.remove("on"); }
 
   function openAdDrawer(orderNo){
-    $("#admDrawer").classList.add("on");
+    var dr = $("#admDrawer"), body = $("#adBody");
+    if(!dr || !body) return;
+    dr.classList.add("on");
     $("#adTitle").textContent = orderNo;
-    $("#adBody").innerHTML = '<div class="adm-empty">加载中…</div>';
+    body.innerHTML = '<div class="adm-empty">加载中…</div>';
     sb.rpc("admin_order_detail", { p_order_no: orderNo }).then(function(res){
       if(res.error){
-        $("#adBody").innerHTML = '<div class="adm-empty">加载失败：'+esc(res.error.message)+'</div>';
+        body.innerHTML = '<div class="adm-empty">加载失败：'+esc(res.error.message)+'</div>';
         return;
       }
       var o = res.data && res.data[0];
-      if(!o){ $("#adBody").innerHTML = '<div class="adm-empty">订单不存在</div>'; return; }
-      renderAdDrawer(o);
+      if(!o){ body.innerHTML = '<div class="adm-empty">订单不存在</div>'; return; }
+      try {
+        renderAdDrawer(o);
+      } catch(err){
+        body.innerHTML = '<div class="adm-empty">详情渲染失败：'+esc((err && err.message) || err)+'</div>';
+      }
+    }).catch(function(err){
+      body.innerHTML = '<div class="adm-empty">加载失败：'+esc((err && err.message) || err)+'</div>';
     });
   }
 
@@ -2088,7 +2096,9 @@ table.adm td .oid3{font-family:var(--serif);color:var(--gold)}
   }
 
   function renderAdDrawer(o){
-    var tl = o.timeline || [];
+    var tl = o.timeline;
+    if(typeof tl === "string"){ try { tl = JSON.parse(tl); } catch(e){ tl = []; } }
+    if(!Array.isArray(tl)) tl = [];
     var tlHtml = tl.length ? tl.map(function(t){
       return '<li><div class="t-t">'+esc(t.title||t.stage)+' · '+Number(t.progress||0)+'%</div>'
         + '<div class="t-d">'+esc(t.detail||"")+(t.at?' · '+esc(fmtTime(t.at)):'')+'</div></li>';
